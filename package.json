@@ -1,0 +1,19 @@
+{
+  "name": "split-image",
+  "version": "1.0.0",
+  "description": "Automate PineTools 'Split image' from the terminal",
+  "main": "index.js",
+  "bin": {
+    "split-image": "index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "build": "powershell -ExecutionPolicy Bypass -File build.ps1"
+  },
+  "dependencies": {
+    "playwright": "^1.45.0"
+  },
+  "devDependencies": {
+    "caxa": "^3.0.1"
+  }
+}
