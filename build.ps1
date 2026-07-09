@@ -74,14 +74,12 @@ if ($LASTEXITCODE -ne 0) { Write-Error "caxa build failed"; exit 1 }
 # ── 4. Create the .cmd launcher ───────────────────────────────────────────────
 # The .cmd sets PLAYWRIGHT_BROWSERS_PATH to the browsers\ folder next to itself,
 # so the exe finds Chromium regardless of where the user runs it from.
-$cmdContent = @'
-@echo off
-:: split-image launcher – sets paths relative to this script's folder, then calls the exe
-set PLAYWRIGHT_BROWSERS_PATH=%~dp0browsers
-set SPLIT_IMAGE_BASE=%~dp0
-"%~dp0split-image.exe" %*
-'@
-$cmdContent | Set-Content -Encoding ASCII "$root\dist\split-image.cmd"
+$cmdContent = "@echo off`r`n" +
+              ":: split-image launcher - sets paths relative to this script's folder, then calls the exe`r`n" +
+              "set PLAYWRIGHT_BROWSERS_PATH=%~dp0browsers`r`n" +
+              "set SPLIT_IMAGE_BASE=%~dp0`r`n" +
+              '"%~dp0split-image.exe" %*'
+[System.IO.File]::WriteAllText("$root\dist\split-image.cmd", $cmdContent, [System.Text.Encoding]::ASCII)
 Write-Host "  Created: dist\split-image.cmd"
 
 # ── 5. Create input-png\ and output\ in dist\ ────────────────────────────────
