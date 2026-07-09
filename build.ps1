@@ -2,11 +2,13 @@
 #
 # Output (dist\ folder):
 #   split-image.exe    – self-contained Node.js bundle (caxa)
-#   split-image.cmd    – launcher that sets the browsers path automatically
+#   split-image.cmd    – launcher that sets env vars automatically
 #   browsers\          – Chromium runtime for Playwright
+#   input-png\         – drop your PNGs here before running
+#   output\            – extracted results appear here
 #
 # Usage after build:
-#   dist\split-image.cmd [--blocks 2-7] [--dir <path>]
+#   dist\split-image.cmd [--blocks 2-7]
 # Or add dist\ to your PATH and just type: split-image
 
 Set-StrictMode -Version Latest
@@ -33,16 +35,27 @@ Ensure-Command "npm"
 New-Item -ItemType Directory -Force -Path "$root\dist" | Out-Null
 
 # ── 1. npm install ─────────────────────────────────────────────────────────────
-Banner "1/3  Installing npm dependencies"
-npm install
-if ($LASTEXITCODE -ne 0) { Write-Error "npm install failed"; exit 1 }
+$nmExists   = Test-Path "$root\node_modules"
+$lockNewer  = $nmExists -and ((Get-Item "$root\package.json").LastWriteTime -le (Get-Item "$root\node_modules").LastWriteTime)
+if ($lockNewer) {
+  Banner "1/3  node_modules up to date — skipping npm install"
+} else {
+  Banner "1/3  Installing npm dependencies"
+  npm install
+  if ($LASTEXITCODE -ne 0) { Write-Error "npm install failed"; exit 1 }
+}
 
 # ── 2. Playwright Chromium → dist\browsers\ ───────────────────────────────────
-Banner "2/3  Installing Chromium  →  dist\browsers\"
 New-Item -ItemType Directory -Force -Path "$root\dist\browsers" | Out-Null
 $env:PLAYWRIGHT_BROWSERS_PATH = "$root\dist\browsers"
-npx playwright install chromium
-if ($LASTEXITCODE -ne 0) { Write-Error "playwright install failed"; exit 1 }
+$chromiumExists = Get-ChildItem "$root\dist\browsers" -Filter "chromium-*" -Directory -ErrorAction SilentlyContinue
+if ($chromiumExists) {
+  Banner "2/3  Chromium already installed — skipping"
+} else {
+  Banner "2/3  Installing Chromium  →  dist\browsers\"
+  npx playwright install chromium
+  if ($LASTEXITCODE -ne 0) { Write-Error "playwright install failed"; exit 1 }
+}
 Remove-Item Env:\PLAYWRIGHT_BROWSERS_PATH
 
 # ── 3. Build .exe with caxa ───────────────────────────────────────────────────
@@ -63,12 +76,18 @@ if ($LASTEXITCODE -ne 0) { Write-Error "caxa build failed"; exit 1 }
 # so the exe finds Chromium regardless of where the user runs it from.
 $cmdContent = @'
 @echo off
-:: split-image launcher – sets browser path then calls the exe
+:: split-image launcher – sets paths relative to this script's folder, then calls the exe
 set PLAYWRIGHT_BROWSERS_PATH=%~dp0browsers
+set SPLIT_IMAGE_BASE=%~dp0
 "%~dp0split-image.exe" %*
 '@
 $cmdContent | Set-Content -Encoding ASCII "$root\dist\split-image.cmd"
 Write-Host "  Created: dist\split-image.cmd"
+
+# ── 5. Create input-png\ and output\ in dist\ ────────────────────────────────
+New-Item -ItemType Directory -Force -Path "$root\dist\input-png" | Out-Null
+New-Item -ItemType Directory -Force -Path "$root\dist\output"    | Out-Null
+Write-Host "  Created: dist\input-png\  dist\output\"
 
 # ─────────────────────────────────────────────────────────────────────────────
 Write-Host ""
@@ -78,14 +97,9 @@ Write-Host "  Files:"
 Write-Host "    dist\split-image.cmd   <-- run this (or add dist\ to PATH)"
 Write-Host "    dist\split-image.exe"
 Write-Host "    dist\browsers\"
+Write-Host "    dist\input-png\        <-- drop PNGs here"
+Write-Host "    dist\output\           <-- results appear here"
 Write-Host ""
 Write-Host "  Usage:"
-Write-Host "    split-image [--blocks 2-7] [--dir <path-to-your-png>]"
-Write-Host ""
-Write-Host "  Examples:"
-Write-Host "    split-image"
-Write-Host "    split-image --blocks 4"
-Write-Host "    split-image --blocks 3 --dir C:\Images"
-Write-Host ""
-Write-Host "  Note: keep dist\browsers\ in the same folder as split-image.cmd"
+Write-Host "    split-image [--blocks 2-7]"
 Write-Host ""

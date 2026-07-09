@@ -182,15 +182,22 @@ async function processOne(browser, pngFile, inputDir, blocks, outBase) {
 // ─────────────────────────────────────────────
 async function main() {
   const { blocks } = parseArgs();
-  const outBase  = process.cwd();
-  const inputDir = path.join(outBase, 'input-png');
+  // When run via the .cmd launcher, SPLIT_IMAGE_BASE points to dist\.
+  // In dev mode (node index.js) it falls back to cwd so nothing breaks.
+  const base     = process.env.SPLIT_IMAGE_BASE
+                   ? process.env.SPLIT_IMAGE_BASE.replace(/[/\\]+$/, '')
+                   : process.cwd();
+  const inputDir = path.join(base, 'input-png');
+  const outBase  = path.join(base, 'output');
 
-  // Create input folder on first run and guide the user
+  // Create input/output folders on first run
   if (!fs.existsSync(inputDir)) {
     fs.mkdirSync(inputDir, { recursive: true });
-    console.log(`\n  Created input-png\\ — drop your PNGs there and re-run.\n`);
+    fs.mkdirSync(outBase,  { recursive: true });
+    console.log(`\n  Created input-png\\ and output\\ — drop your PNGs in input-png\\ and re-run.\n`);
     process.exit(0);
   }
+  fs.mkdirSync(outBase, { recursive: true });
 
   // Only process PNGs whose output folder doesn't exist yet
   const queue = fs.readdirSync(inputDir)

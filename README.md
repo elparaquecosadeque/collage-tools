@@ -33,9 +33,10 @@ Add `dist\` to your `PATH`, or call `split-image.cmd` with a full path.
 ## Usage
 
 1. Run `split-image.cmd` (or `node index.js`) from any working directory.  
-   On first run it creates an `input-png\` folder in that directory and exits.
+   On first run it creates `input-png\` and `output\` next to the exe and exits.
 2. Drop your PNGs into `input-png\`.
 3. Re-run — every PNG without a matching output folder is processed.
+   Results appear in `output\`.
 
 ```
 split-image [--blocks N]
@@ -60,16 +61,17 @@ split-image --blocks 4
 
 ### Output
 
-Given `input-png\banner.png`, the tool produces in your working directory:
+Given `input-png\banner.png`, the tool produces in `output\`:
 
 ```
-banner.zip          ← downloaded archive (kept for reference)
-banner\
-  1.png             ← leftmost column
-  2.png
-  ...
-  6.png             ← rightmost column
-  banner.png        ← original moved here after processing
+output\
+  banner.zip          ← downloaded archive (kept for reference)
+  banner\
+    1.png             ← leftmost column
+    2.png
+    ...
+    6.png             ← rightmost column
+    banner.png        ← original moved here after processing
 ```
 
 PNGs already in an output folder are skipped on subsequent runs, so you can
@@ -83,5 +85,7 @@ Run without building:
 cd split-image
 node index.js --blocks 4
 ```
+
+In dev mode `SPLIT_IMAGE_BASE` is not set, so it falls back to `cwd` — `input-png\` and `output\` are created there.
 
 > Requires `PLAYWRIGHT_BROWSERS_PATH` to point at a Chromium install, or having run `build.ps1` at least once so `dist\browsers\` exists.
