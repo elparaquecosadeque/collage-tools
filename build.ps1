@@ -1,11 +1,11 @@
-# build.ps1 – compile split-image into a standalone Windows executable
+# build.ps1 - compile split-image into a standalone Windows executable
 #
 # Output (dist\ folder):
-#   split-image.exe    – self-contained Node.js bundle (caxa)
-#   split-image.cmd    – launcher that sets env vars automatically
-#   browsers\          – Chromium runtime for Playwright
-#   input-png\         – drop your PNGs here before running
-#   output\            – extracted results appear here
+#   split-image.exe    - self-contained Node.js bundle (caxa)
+#   split-image.cmd    - launcher that sets env vars automatically
+#   browsers\          - Chromium runtime for Playwright
+#   input-png\         - drop your PNGs here before running
+#   output\            - extracted results appear here
 #
 # Usage after build:
 #   dist\split-image.cmd [--blocks 2-7]
@@ -27,34 +27,33 @@ if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Write-Error "  'npm
 
 New-Item -ItemType Directory -Force -Path "$root\dist" | Out-Null
 
-# ── 1. npm install ─────────────────────────────────────────────────────────────
-$nmExists   = Test-Path "$root\node_modules"
-$lockNewer  = $nmExists -and ((Get-Item "$root\package.json").LastWriteTime -le (Get-Item "$root\node_modules").LastWriteTime)
-if ($lockNewer) {
-  Banner "1/3  node_modules up to date — skipping npm install"
+# -- 1. npm install
+$nmExists  = Test-Path "$root\node_modules"
+$pkgTime   = (Get-Item "$root\package.json").LastWriteTime
+$nmTime    = if ($nmExists) { (Get-Item "$root\node_modules").LastWriteTime } else { [datetime]::MinValue }
+if ($nmExists -and ($pkgTime -le $nmTime)) {
+  Banner "1/3  node_modules up to date - skipping npm install"
 } else {
   Banner "1/3  Installing npm dependencies"
   npm install
   if ($LASTEXITCODE -ne 0) { Write-Error "npm install failed"; exit 1 }
 }
 
-# ── 2. Playwright Chromium → dist\browsers\ ───────────────────────────────────
+# -- 2. Playwright Chromium -> dist\browsers\
 New-Item -ItemType Directory -Force -Path "$root\dist\browsers" | Out-Null
 $env:PLAYWRIGHT_BROWSERS_PATH = "$root\dist\browsers"
 $chromiumExists = Get-ChildItem "$root\dist\browsers" -Filter "chromium-*" -Directory -ErrorAction SilentlyContinue
 if ($chromiumExists) {
-  Banner "2/3  Chromium already installed — skipping"
+  Banner "2/3  Chromium already installed - skipping"
 } else {
-  Banner "2/3  Installing Chromium  →  dist\browsers\"
+  Banner "2/3  Installing Chromium -> dist\browsers\"
   npx playwright install chromium
   if ($LASTEXITCODE -ne 0) { Write-Error "playwright install failed"; exit 1 }
 }
 Remove-Item Env:\PLAYWRIGHT_BROWSERS_PATH
 
-# ── 3. Build .exe with caxa ───────────────────────────────────────────────────
-# caxa packs Node.js + this project into a self-extracting exe.
-# It uses the locally installed Node.js so there are no runtime version mismatches.
-Banner "3/3  Building split-image.exe  (caxa)"
+# -- 3. Build .exe with caxa
+Banner "3/3  Building split-image.exe (caxa)"
 npx caxa `
   --input  . `
   --exclude dist `
@@ -64,33 +63,24 @@ npx caxa `
   -- "{{caxa}}/node_modules/.bin/node" "{{caxa}}/index.js"
 if ($LASTEXITCODE -ne 0) { Write-Error "caxa build failed"; exit 1 }
 
-# ── 4. Create the .cmd launcher ───────────────────────────────────────────────
-# The .cmd sets PLAYWRIGHT_BROWSERS_PATH to the browsers\ folder next to itself,
-# so the exe finds Chromium regardless of where the user runs it from.
-$cmdContent = "@echo off`r`n" +
-              ":: split-image launcher - sets paths relative to this script's folder, then calls the exe`r`n" +
-              "set PLAYWRIGHT_BROWSERS_PATH=%~dp0browsers`r`n" +
-              "set SPLIT_IMAGE_BASE=%~dp0`r`n" +
-              '"%~dp0split-image.exe" %*'
-[System.IO.File]::WriteAllText("$root\dist\split-image.cmd", $cmdContent, [System.Text.Encoding]::ASCII)
+# -- 4. Create the .cmd launcher
+$cmd = "@echo off`r`n" +
+        ":: split-image launcher`r`n" +
+        "set PLAYWRIGHT_BROWSERS_PATH=%~dp0browsers`r`n" +
+        "set SPLIT_IMAGE_BASE=%~dp0`r`n" +
+        '"%~dp0split-image.exe" %*'
+[System.IO.File]::WriteAllText("$root\dist\split-image.cmd", $cmd, [System.Text.Encoding]::ASCII)
 Write-Host "  Created: dist\split-image.cmd"
 
-# ── 5. Create input-png\ and output\ in dist\ ────────────────────────────────
+# -- 5. Create input-png\ and output\ in dist\
 New-Item -ItemType Directory -Force -Path "$root\dist\input-png" | Out-Null
 New-Item -ItemType Directory -Force -Path "$root\dist\output"    | Out-Null
 Write-Host "  Created: dist\input-png\  dist\output\"
 
-# ─────────────────────────────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "  Build complete!" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Files:"
-Write-Host "    dist\split-image.cmd   <-- run this (or add dist\ to PATH)"
-Write-Host "    dist\split-image.exe"
-Write-Host "    dist\browsers\"
-Write-Host "    dist\input-png\        <-- drop PNGs here"
-Write-Host "    dist\output\           <-- results appear here"
-Write-Host ""
-Write-Host "  Usage:"
-Write-Host "    split-image [--blocks 2-7]"
+Write-Host "  dist\split-image.cmd   <- run this (or add dist\ to PATH)"
+Write-Host "  dist\input-png\        <- drop PNGs here"
+Write-Host "  dist\output\           <- results appear here"
 Write-Host ""
