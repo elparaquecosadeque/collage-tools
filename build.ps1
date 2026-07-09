@@ -22,15 +22,8 @@ function Banner($msg) {
   Write-Host "  [$msg]" -ForegroundColor Cyan
 }
 
-function Ensure-Command($cmd) {
-  if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
-    Write-Error "  '$cmd' not found. Install Node.js (https://nodejs.org) and re-run."
-    exit 1
-  }
-}
-
-Ensure-Command "node"
-Ensure-Command "npm"
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Error "  'node' not found. Install Node.js (https://nodejs.org) and re-run."; exit 1 }
+if (-not (Get-Command npm  -ErrorAction SilentlyContinue)) { Write-Error "  'npm' not found. Install Node.js (https://nodejs.org) and re-run.";  exit 1 }
 
 New-Item -ItemType Directory -Force -Path "$root\dist" | Out-Null
 
