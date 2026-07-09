@@ -32,53 +32,56 @@ Add `dist\` to your `PATH`, or call `split-image.cmd` with a full path.
 
 ## Usage
 
-Run from the directory that contains your PNG (or pass `--dir`):
+1. Run `split-image.cmd` (or `node index.js`) from any working directory.  
+   On first run it creates an `input-png\` folder in that directory and exits.
+2. Drop your PNGs into `input-png\`.
+3. Re-run — every PNG without a matching output folder is processed.
 
 ```
-split-image [--blocks N] [--dir PATH]
+split-image [--blocks N]
 ```
 
 ### Options
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--blocks` | `-b` | `6` | Number of columns to split into (2–7) |
-| `--dir` | `-d` | cwd | Directory containing the PNG |
+| `--blocks` | `-b` | `6` | Columns to split into (2–7) |
 | `--help` | `-h` | | Show help |
 
 ### Examples
 
 ```powershell
-# From the folder that has your PNG
-cd C:\Images\MyProject
+# Default 6 columns
 split-image
 
 # 4 columns
 split-image --blocks 4
-
-# PNG is elsewhere
-split-image --blocks 3 --dir C:\Images\MyProject
 ```
 
 ### Output
 
-Given `banner.png`, the tool produces:
+Given `input-png\banner.png`, the tool produces in your working directory:
 
 ```
-banner.zip          ← downloaded zip (kept for reference)
+banner.zip          ← downloaded archive (kept for reference)
 banner\
-  row-1-column-1.png
-  row-1-column-2.png
+  1.png             ← leftmost column
+  2.png
   ...
-  row-1-column-6.png
+  6.png             ← rightmost column
+  banner.png        ← original moved here after processing
 ```
+
+PNGs already in an output folder are skipped on subsequent runs, so you can
+add more files to `input-png\` and re-run without reprocessing old ones.
 
 ## Development
 
 Run without building:
 
 ```powershell
-node index.js --blocks 4 --dir C:\Images\MyProject
+cd split-image
+node index.js --blocks 4
 ```
 
 > Requires `PLAYWRIGHT_BROWSERS_PATH` to point at a Chromium install, or having run `build.ps1` at least once so `dist\browsers\` exists.
