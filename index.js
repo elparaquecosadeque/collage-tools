@@ -2,8 +2,8 @@
 'use strict';
 
 const { chromium } = require('playwright');
-const path  = require('path');
-const fs    = require('fs');
+const path = require('path');
+const fs = require('fs');
 const { execSync } = require('child_process');
 
 // ─────────────────────────────────────────────
@@ -52,68 +52,63 @@ function parseArgs() {
 // PineTools element IDs (confirmed from page source)
 // ─────────────────────────────────────────────
 const ID = {
-  fileInput : '6a4eff5a27132-ii-input-file',
-  canvas    : '6a4eff5a27132',
-  dirH      : '6a4eff5a2714c-directions-1',  // "Horizontally"
-  modeByQty : '6a4eff5a27169-modeH-0',        // "Quantity of blocks"
-  quantityH : '6a4eff5a27169-quantityH',
-  fmtPNG    : '6a4eff5a27175-format-1',       // PNG
-  quality   : '6a4eff5a27175-quality',
-  sel       : (id) => `[id="${id}"]`,          // IDs starting with digit need [id="…"]
-  splitBtn  : '#contBotEjec span.boton',
-  zipBtn    : '[id="6a4eff5a2719d"] .all-zipped button',
+  fileInput: 'ii-input-file',
+  dirH: 'directions-1',  // "Horizontally"
+  modeByQty: 'modeH-0',        // "Quantity of blocks"
+  quantityH: 'quantityH',
+  fmtPNG: 'format-1',       // PNG
+  quality: 'quality',
+  sel: (id) => `[id$="${id}"]`,         // PineTools prefixes IDs with a page hash.
+  splitBtn: '#contBotEjec span.boton',
+  zipBtn: '.all-zipped button',
 };
 
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
 function setRadio(page, id) {
-  return page.evaluate((id) => {
-    const el = document.getElementById(id);
+  return page.evaluate(({ id, selector }) => {
+    const el = document.querySelector(selector);
     if (!el) throw new Error(`Element not found: ${id}`);
     el.checked = true;
     el.dispatchEvent(new Event('change', { bubbles: true }));
-  }, id);
+  }, { id, selector: ID.sel(id) });
 }
 
 function setInput(page, id, value) {
-  return page.evaluate(({ id, value }) => {
-    const el = document.getElementById(id);
+  return page.evaluate(({ id, selector, value }) => {
+    const el = document.querySelector(selector);
     if (!el) throw new Error(`Element not found: ${id}`);
     el.value = String(value);
     el.dispatchEvent(new Event('change', { bubbles: true }));
-  }, { id, value });
+  }, { id, selector: ID.sel(id), value });
 }
 
 function step(label) { process.stdout.write(`    ${label.padEnd(26, '.')} `); }
-function ok()        { console.log('✔'); }
+function ok() { console.log('✔'); }
 
 // ─────────────────────────────────────────────
 // Process one PNG
 // ─────────────────────────────────────────────
 async function processOne(browser, pngFile, inputDir, blocks, outBase) {
-  const pngPath  = path.join(inputDir, pngFile);
-  const stem     = path.basename(pngFile, path.extname(pngFile));
-  const outDir   = path.join(outBase, stem);
-  const zipPath  = path.join(outBase, `${stem}.zip`);
+  const pngPath = path.join(inputDir, pngFile);
+  const stem = path.basename(pngFile, path.extname(pngFile));
+  const outDir = path.join(outBase, stem);
+  const zipPath = path.join(outBase, `${stem}.zip`);
 
   console.log(`\n  ▸ ${pngFile}`);
 
   const context = await browser.newContext({ acceptDownloads: true });
-  const page    = await context.newPage();
+  const page = await context.newPage();
 
   try {
     step('Opening PineTools');
     await page.goto('https://pinetools.com/split-image', { waitUntil: 'domcontentloaded' });
+    await page.locator(ID.sel(ID.fileInput)).waitFor({ timeout: 30_000 });
     ok();
 
     step('Uploading image');
     await page.locator(ID.sel(ID.fileInput)).setInputFiles(pngPath);
-    await page.waitForFunction(
-      (id) => (document.getElementById(id) || {}).width > 0,
-      ID.canvas,
-      { timeout: 30_000 }
-    );
     ok();
 
     step('Setting options');
@@ -159,7 +154,7 @@ async function processOne(browser, pngFile, inputDir, blocks, outBase) {
       .filter(f => /\.png$/i.test(f))
       .sort((a, b) => {
         const col = f => parseInt((f.match(/column-(\d+)/i) || [0, 0])[1], 10);
-        const row = f => parseInt((f.match(/row-(\d+)/i)    || [0, 0])[1], 10);
+        const row = f => parseInt((f.match(/row-(\d+)/i) || [0, 0])[1], 10);
         return row(a) - row(b) || col(a) - col(b);
       });
 
@@ -184,16 +179,16 @@ async function main() {
   const { blocks } = parseArgs();
   // When run via the .cmd launcher, SPLIT_IMAGE_BASE points to dist\.
   // In dev mode (node index.js) it falls back to cwd so nothing breaks.
-  const base     = process.env.SPLIT_IMAGE_BASE
-                   ? process.env.SPLIT_IMAGE_BASE.replace(/[/\\]+$/, '')
-                   : process.cwd();
+  const base = process.env.SPLIT_IMAGE_BASE
+    ? process.env.SPLIT_IMAGE_BASE.replace(/[/\\]+$/, '')
+    : process.cwd();
   const inputDir = path.join(base, 'input-png');
-  const outBase  = path.join(base, 'output');
+  const outBase = path.join(base, 'output');
 
   // Create input/output folders on first run
   if (!fs.existsSync(inputDir)) {
     fs.mkdirSync(inputDir, { recursive: true });
-    fs.mkdirSync(outBase,  { recursive: true });
+    fs.mkdirSync(outBase, { recursive: true });
     console.log(`\n  Created input-png\\ and output\\ — drop your PNGs in input-png\\ and re-run.\n`);
     process.exit(0);
   }
